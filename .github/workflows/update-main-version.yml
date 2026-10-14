@@ -1,0 +1,55 @@
+name: Update Main Version
+
+on:
+  # push:
+  #   tags:
+  #     - 'v[0-9]+.[0-9]+.[0-9]+'
+  release:
+    types:
+      - released
+
+permissions:
+  contents: write
+
+jobs:
+  update-tag:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Extract major version
+        id: extract
+        uses: actions/github-script@v9
+        with:
+          script: |
+            const tagName = context.ref.replace(/^refs\/tags\//, '');
+            const major = `v${tagName.replace(/^v/, '').split('.')[0]}`;
+            core.setOutput('major', major);
+            core.setOutput('source', tagName);
+
+      - name: Skip if already up to date
+        id: check
+        env:
+          MAJOR: ${{ steps.extract.outputs.major }}
+          SOURCE: ${{ steps.extract.outputs.source }}
+        run: |
+          if git rev-parse "$MAJOR" >/dev/null 2>&1 \
+              && [ "$(git rev-parse "$MAJOR^{commit}")" = "$(git rev-parse "$SOURCE^{commit}")" ]; then
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            echo "Tag $MAJOR already points to $SOURCE, skipping."
+          else
+            echo "skip=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Tag new target
+        if: steps.check.outputs.skip != 'true'
+        run: |
+          git tag -f \
+            ${{ steps.extract.outputs.major }} \
+            ${{ steps.extract.outputs.source }}
+
+      - name: Push new tag
+        if: steps.check.outputs.skip != 'true'
+        run: git push origin ${{ steps.extract.outputs.major }} --force
