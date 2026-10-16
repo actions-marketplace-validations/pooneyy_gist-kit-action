@@ -1,7 +1,7 @@
 {
   "name": "gist-kit-action",
   "description": "gist-kit-action is a multi-functional toolkit for interacting with Github Gist",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "author": "pooneyy",
   "type": "module",
   "private": true,
