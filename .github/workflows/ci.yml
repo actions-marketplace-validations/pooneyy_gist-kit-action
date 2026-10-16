@@ -83,7 +83,7 @@ jobs:
           create-public-gist:
             ${{ matrix.visibility == 'public' && 'true' || '' }}
           filenames: |
-            .github/README.md
+            README.md
             ${{ runner.temp }}/test/*.txt
 
       - name: Fetch Gist Metadata (1)
@@ -154,7 +154,7 @@ jobs:
           gist-id: ${{ steps.test-create-gist.outputs.gist-id }}
           filenames: |
             ${{ runner.temp }}/test/*.txt
-            .github/README.md
+            README.md
 
       - name: Fetch Gist Metadata (2)
         run: |
