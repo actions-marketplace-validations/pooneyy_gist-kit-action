@@ -13,6 +13,7 @@ import * as core from '@actions/core'
 import * as glob from '@actions/glob'
 import {
   basenameOf,
+  errorMessage,
   expandFilenames,
   parseBooleanStrict,
   parseOperation,
@@ -137,8 +138,7 @@ export async function run(): Promise<void> {
     core.setOutput('gist-id', outputGistId)
   } catch (err) {
     // 所有失败路径汇聚此处
-    if (err instanceof Error) core.setFailed(err)
-    else core.setFailed(String(err))
+    core.setFailed(errorMessage(err))
   }
 }
 

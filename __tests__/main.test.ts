@@ -75,8 +75,9 @@ function mockFetch(
 function expectFailedWith(substring: string): void {
   expect(core.setFailed).toHaveBeenCalledTimes(1)
   const arg = (core.setFailed as unknown as jest.Mock).mock.calls[0][0]
-  const message = typeof arg === 'string' ? arg : (arg as Error).message
-  expect(message).toContain(substring)
+  expect(typeof arg).toBe('string')
+  expect(arg as string).toContain(substring)
+  expect(arg as string).not.toMatch(/^Error:\s*Error:\s/)
 }
 
 beforeEach(() => {
@@ -320,8 +321,28 @@ describe('main.ts dispatcher', () => {
     })
 
     await run()
-    expect.assertions(2)
+    expect.assertions(4)
     expectFailedWith('None of the requested files matched')
+  })
+
+  it('download: warns (not fails) when a requested file does not exist', async () => {
+    setInput('operation', 'download')
+    setInput('gist-id', 'abc')
+    setInput('filenames', 'present.md\nmissing.md')
+    mockFetch(200, {
+      id: 'abc',
+      files: {
+        'present.md': { filename: 'present.md', raw_url: 'https://x/present' }
+      }
+    })
+    mockFetch(200, 'present contents')
+
+    await run()
+    expect(core.setFailed).not.toHaveBeenCalled()
+    expect(core.warning).toHaveBeenCalled()
+    const [arg] = (core.warning as unknown as jest.Mock).mock.calls[0]
+    expect(typeof arg).toBe('string')
+    expect(arg).toEqual(expect.stringContaining('missing.md'))
   })
 
   it('delete-files: sends { name: null }', async () => {
@@ -421,6 +442,11 @@ describe('main.ts dispatcher', () => {
     await run()
     expect(core.setFailed).not.toHaveBeenCalled()
     expect(core.warning).toHaveBeenCalled()
+    for (const call of (core.warning as unknown as jest.Mock).mock.calls) {
+      const [arg] = call
+      expect(typeof arg).toBe('string')
+      expect(arg).toEqual(expect.stringContaining('abc'))
+    }
     const patchInit = mocks.fetch.mock.calls[1] as [string, RequestInit]
     const body = JSON.parse(patchInit[1].body as string)
     expect(body.files).toEqual({})
@@ -443,7 +469,7 @@ describe('main.ts dispatcher', () => {
   it('rejects invalid operation strings', async () => {
     setInput('operation', 'smash')
     await run()
-    expect.assertions(2)
+    expect.assertions(4)
     expectFailedWith('Invalid operation')
   })
 
@@ -452,7 +478,7 @@ describe('main.ts dispatcher', () => {
     setInput('token', 'gh_test')
     setInput('filenames', '')
     await run()
-    expect.assertions(2)
+    expect.assertions(4)
     expectFailedWith('filenames` is required for the create')
   })
 
@@ -463,8 +489,23 @@ describe('main.ts dispatcher', () => {
     mockFetch(404, '{"message":"Not Found"}')
 
     await run()
-    expect.assertions(4)
+    expect.assertions(8)
     expectFailedWith('GitHub API request failed')
     expectFailedWith('404')
+  })
+
+  it('setFailed receives a plain string, never an Error instance', async () => {
+    setInput('operation', 'delete-gist')
+    setInput('token', 'gh_test')
+    setInput('gist-id', 'abc')
+    mockFetch(403, '{"message":"rate limit"}')
+
+    await run()
+    expect(core.setFailed).toHaveBeenCalledTimes(1)
+    const [message2] = (core.setFailed as unknown as jest.Mock).mock.calls[0]
+    expect(typeof message2).toBe('string')
+    expect(message2).not.toMatch(/^Error:\s*Error:\s/)
+    expect(message2).toContain('403')
+    expect(message2).toContain('rate limit')
   })
 })

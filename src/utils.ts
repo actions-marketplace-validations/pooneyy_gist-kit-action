@@ -66,6 +66,13 @@ export function parseOperation(raw: string): Operation {
 }
 
 /**
+ * 从任意被抛出的值里提取可读消息
+ */
+export function errorMessage(err: unknown): string {
+  return err instanceof Error ? err.message : String(err)
+}
+
+/**
  * 将 `filenames` 输入（以换行分隔、可包含 glob 模式）展开为去重且排序后的
  * 本地文件路径列表。
  *
@@ -164,9 +171,7 @@ export async function downloadRaw(url: string, attempt = 1): Promise<Response> {
       return downloadRaw(url, attempt + 1)
     }
     throw new Error(
-      `Network error downloading ${url} after ${RAW_DOWNLOAD_RETRIES} attempts: ${
-        err instanceof Error ? err.message : String(err)
-      }`,
+      `Network error downloading ${url} after ${RAW_DOWNLOAD_RETRIES} attempts: ${errorMessage(err)}`,
       { cause: err }
     )
   }
