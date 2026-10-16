@@ -182,3 +182,116 @@ jobs:
           curl -sS \
             -H "Authorization: Bearer ${{ secrets.GIST_WRITE_PERMISSION_TOKEN }}" \
             https://api.github.com/gists/${{ steps.test-create-gist.outputs.gist-id }}
+
+  abnormal-behavior-testing:
+    name: Abnormal Behavior Testing
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        id: checkout
+        uses: actions/checkout@v7
+
+      - name: Attempting to create a Gist with an unauthorized token
+        continue-on-error: true
+        id: test-unauthorized-token-create-gist
+        uses: ./
+        with:
+          # The token doesn't have write permissions to gists
+          token: ${{ secrets.GITHUB_TOKEN }}
+          operation: create
+          filenames: |
+            README.md
+
+      - name: Attempting to create a Gist using a file that does not exist
+        continue-on-error: true
+        id: test-non-existent-file-create-gist
+        uses: ./
+        with:
+          token: ${{ secrets.GIST_WRITE_PERMISSION_TOKEN }}
+          operation: create
+          filenames: |
+            .github/README.md
+
+      - name: Create Gist
+        id: test-create-gist
+        uses: ./
+        with:
+          token: ${{ secrets.GIST_WRITE_PERMISSION_TOKEN }}
+          operation: create
+          filenames: |
+            README.md
+
+      - name: Attempting to download a non-existent file
+        continue-on-error: true
+        uses: ./
+        with:
+          operation: download
+          gist-id: ${{ steps.test-create-gist.outputs.gist-id }}
+          filenames: |
+            test-time.txt
+
+      - name: Attempting to download from non-existent Gist
+        continue-on-error: true
+        uses: ./
+        with:
+          operation: download
+          gist-id: abcdef0123456789
+          filenames: |
+            README.md
+
+      - name: Attempting to download without Gist ID
+        continue-on-error: true
+        uses: ./
+        with:
+          operation: download
+          filenames: |
+            README.md
+
+      - name: Attempting to download file using an unauthorized token
+        continue-on-error: true
+        uses: ./
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+          operation: download
+          gist-id: ${{ steps.test-create-gist.outputs.gist-id }}
+          filenames: |
+            README.md
+
+      - name: Attempting to upload a non-existent file
+        continue-on-error: true
+        uses: ./
+        with:
+          token: ${{ secrets.GIST_WRITE_PERMISSION_TOKEN }}
+          operation: update
+          gist-id: ${{ steps.test-create-gist.outputs.gist-id }}
+          filenames: |
+            gist-metadata.json
+
+      - name: Attempting to delete a non-existent file
+        continue-on-error: true
+        uses: ./
+        with:
+          token: ${{ secrets.GIST_WRITE_PERMISSION_TOKEN }}
+          operation: delete-files
+          gist-id: ${{ steps.test-create-gist.outputs.gist-id }}
+          filenames: |
+            gist-metadata.json
+
+      - name: Attempting to delete a non-existent Gist
+        continue-on-error: true
+        uses: ./
+        with:
+          token: ${{ secrets.GIST_WRITE_PERMISSION_TOKEN }}
+          operation: delete-gist
+          gist-id:
+            ${{ steps.test-non-existent-file-create-gist.outputs.gist-id }}
+
+      - name: Delete Gist
+        id: delete-gist
+        if: always()
+        uses: ./
+        with:
+          token: ${{ secrets.GIST_WRITE_PERMISSION_TOKEN }}
+          operation: delete-gist
+          gist-id: ${{ steps.test-create-gist.outputs.gist-id }}
