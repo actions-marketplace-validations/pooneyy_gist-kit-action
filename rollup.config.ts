@@ -11,7 +11,7 @@ const config = {
     esModule: true,
     file: 'dist/index.js',
     format: 'es',
-    sourcemap: true,
+    sourcemap: false,
     compact: false
   },
   plugins: [
