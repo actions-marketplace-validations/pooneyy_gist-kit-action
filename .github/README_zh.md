@@ -80,7 +80,7 @@
 - name: 下载 Gist 文件
   uses: pooneyy/gist-kit-action@v1
   with:
-    operation: operation: download
+    operation: download
     gist-id: abc123def
     # `filenames` 为空时会下载所有文件，否则，每条记录会先去除路径部分，
     # 然后与 Gist 文件名匹配；附带 /path/to 的条目会下载到指定位置。
